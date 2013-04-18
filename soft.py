@@ -103,14 +103,20 @@ class SoftFile:
                             else:
                                 self.starts[d] = startingPoint
                 else:
-                    columns = line.split()
+                    columns = line.split('\t')
                     gene = columns[1]
                     if gene == 'EMPTY':
                         continue
                     self.genes.append(gene)
                     for i,h in enumerate(headerOrder):
-                        if columns[i+2] != 'null':
-                            self.data[h].values[gene] = float(columns[i+2])
+                        if i+2 >= len(columns):
+                            continue
+                        value = columns[i+2]
+                        try:
+                            value = float(value)
+                            self.data[h].values[gene] = value
+                        except:
+                            pass
         infile.close()
     
     def getVectors(self, attr1, attr2):

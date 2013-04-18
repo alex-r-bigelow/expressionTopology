@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1453</width>
-    <height>877</height>
+    <width>1024</width>
+    <height>768</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -88,6 +88,9 @@
         <property name="autoDefault">
          <bool>true</bool>
         </property>
+        <property name="default">
+         <bool>true</bool>
+        </property>
        </widget>
       </item>
       <item>
@@ -102,6 +105,13 @@
          </size>
         </property>
        </spacer>
+      </item>
+      <item>
+       <widget class="QPushButton" name="loadButton">
+        <property name="text">
+         <string>Load Data...</string>
+        </property>
+       </widget>
       </item>
       <item>
        <widget class="QPushButton" name="quitButton">
