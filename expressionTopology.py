@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import sys, os, math
-from PySide.QtGui import QApplication, QGraphicsScene, QGraphicsItem, QPen, QFont, QBrush, QCompleter, QTableWidgetItem, QColorDialog, QFileDialog
+from PySide.QtGui import QApplication, QGraphicsScene, QGraphicsItem, QPen, QFont, QBrush, QCompleter, QTableWidgetItem, QColorDialog, QFileDialog, QMessageBox
 from PySide.QtCore import Qt, QFile, QRectF, QTimer
 from PySide.QtUiTools import QUiLoader
 from expressionFiles import SoftFile, TsdFile
@@ -393,30 +393,51 @@ class Viz:
         if len(fileNames) == 0:
             return
         
+        errors = []
+        
         for f in fileNames:
             if f in self.loadedPaths:
                 continue
             ext = os.path.splitext(f)[1].lower()
             fObj = None
-            if ext == '.soft':
-                fObj = SoftFile(f)
-            elif ext == '.tsd':
-                fObj = TsdFile(f)
-            #elif ext == '.csv':
-            #    self.dataSources.append(CsvFile(f))
-            #elif ext == '.dat':
-            #    self.dataSources.append(DatFile(f))
-            else:
+            lastLow = parametricPulseGraph.TIME_START
+            lastHigh = parametricPulseGraph.TIME_END
+            try:
+                if ext == '.soft':
+                    fObj = SoftFile(f)
+                elif ext == '.tsd':
+                    fObj = TsdFile(f)
+                #elif ext == '.csv':
+                #    self.dataSources.append(CsvFile(f))
+                #elif ext == '.dat':
+                #    self.dataSources.append(DatFile(f))
+                else:
+                    continue
+                self.dataSources.append(fObj)
+                if len(self.loadedPaths) == 0:
+                    low,high = fObj.timeRange()
+                    parametricPulseGraph.updateTimes(low,high)
+                else:
+                    low,high = fObj.timeRange()
+                    parametricPulseGraph.updateTimes(min(low,parametricPulseGraph.TIME_START),max(high,parametricPulseGraph.TIME_END))
+                self.updateTimeSliders()
+                self.loadedPaths.add(f)
+            except Exception, e:
+                errors.append((f,str(e)))
+                self.dataSources.remove(fObj)
+                parametricPulseGraph.updateTimes(lastLow,lastHigh)
+                self.updateTimeSliders()
                 continue
-            self.dataSources.append(fObj)
-            if len(self.loadedPaths) == 0:
-                low,high = fObj.timeRange()
-                parametricPulseGraph.updateTimes(low,high)
-            else:
-                low,high = fObj.timeRange()
-                parametricPulseGraph.updateTimes(min(low,parametricPulseGraph.TIME_START),max(high,parametricPulseGraph.TIME_END))
-            self.updateTimeSliders()
-            self.loadedPaths.add(f)
+        
+        if len(errors) > 0:
+            msgBox = QMessageBox()
+            msgBox.setText("%i error%s occurred while trying to load data." % (len(errors), '' if len(errors) == 1 else 's'))
+            msgBox.setIcon(QMessageBox.Critical)
+            details = ""
+            for p,e in errors:
+                details += "%s:\n-----\n%s\n\n" % (p,e)
+            msgBox.setDetailedText(details)
+            msgBox.exec_()
         
         # Update gene box
         self.genes = set()
