@@ -1,7 +1,7 @@
-import random, re, os, sys
+import re, os
 
-class softVector:
-    timeKeys = [re.compile(r'(?:(?P<hours>\d+)\s*h[ours]*)?\s*\,*(?:(?P<minutes>\d+)\s*m[inutes]*)?\s*\,*(?:(?P<seconds>\d+)\s*s[econds]*)?', re.I)]    # will match strings like '12 min 8SECONDS' or '2 m'
+class SoftVector:
+    timeKeys = [re.compile(r'(?:(?P<days>\d+)\s*d[ays]*)?\s*\,*(?:(?P<hours>\d+)\s*h[ours]*)?\s*\,*(?:(?P<minutes>\d+)\s*m[inutes]*)?\s*\,*(?:(?P<seconds>\d+)\s*s[econds]*)?', re.I)]    # will match strings like '12 min 8SECONDS' or '2 m'
     def __init__(self):
         self.timepoint = None
         self.descriptions = []
@@ -13,7 +13,7 @@ class softVector:
     
     def addDescription(self, d):
         setTimepoint = False
-        for r in softVector.timeKeys:
+        for r in SoftVector.timeKeys:
             m = re.match(r,d).groupdict()
             numSeconds = 0
             if m.get('seconds',None) != None:
@@ -39,13 +39,16 @@ class softVector:
         return True
     
     def __cmp__(self, other):
-        if not isinstance(other,softVector) or self.timepoint == None or other.timepoint == None:
+        if not isinstance(other,SoftVector) or self.timepoint == None or other.timepoint == None:
             return -1
         else:
             return self.timepoint - other.timepoint
     
 class SoftFile:
     def __init__(self, path):
+        self.minTime = None
+        self.maxTime = None
+        
         self.data = {}
         self.genes = []
         self.starts = {}
@@ -55,7 +58,7 @@ class SoftFile:
             
             headerOrder = None
             families = []
-                        
+            
             for line in infile:
                 if line.startswith('!subset_description'):
                     line = line.strip()
@@ -66,15 +69,22 @@ class SoftFile:
                     assert currentDesc != None
                     for h in line.split(','):
                         if not self.data.has_key(h):
-                            self.data[h] = softVector()
+                            self.data[h] = SoftVector()
                         self.data[h].addDescription(currentDesc)
                 elif len(line) <= 1 or line.startswith('#') or line.startswith('!'):
                     continue
                 elif line.startswith('^'):
                     currentDesc = None
                 elif headerOrder == None:
-                    # Group families of data
+                    # Group families of data, also get min and max times
                     for hObj in self.data.itervalues():
+                        if hObj.timepoint != None:
+                            if self.minTime == None:
+                                self.minTime = hObj.timepoint
+                                self.maxTime = hObj.timepoint
+                            else:
+                                self.minTime = min(hObj.timepoint,self.minTime)
+                                self.maxTime = max(hObj.timepoint,self.maxTime)
                         foundFamily = False
                         for members in families:
                             if members[0].isRelated(hObj):
@@ -125,25 +135,125 @@ class SoftFile:
             vectors[d] = []
             x = hObj.values.get(attr1)
             y = hObj.values.get(attr2)
+            t = hObj.timepoint
             if hObj.nextPoint == None:
                 if x != None and y != None:
-                    vectors[d].append((x,y,x,y))
+                    vectors[d].append((x,y,t,x,y,t))
             else:
                 lastX = x
                 lastY = y
+                lastT = t
                 currentObj = hObj
                 while currentObj.nextPoint != None:
                     currentObj = currentObj.nextPoint
                     x = currentObj.values.get(attr1)
                     y = currentObj.values.get(attr2)
+                    t = currentObj.timepoint
                     if lastX != None and lastY != None and x != None and y != None:
-                        vectors[d].append((lastX,lastY,x,y))
+                        vectors[d].append((lastX,lastY,lastT,x,y,t))
                     lastX = x
                     lastY = y
+                    lastT = t
         return vectors
     
     def geneList(self):
-        return list(self.genes)
+        return self.genes
     
     def classList(self):
         return self.starts.keys()
+    
+    def timeRange(self):
+        return (self.minTime,self.maxTime)
+
+class TsdFile:
+    '''
+    Assumes time points are in seconds, requires 'time' to be the first column header
+    '''
+    def __init__(self, path):
+        self.minTime = None
+        self.maxTime = None
+        self.classes = [os.path.splitext(os.path.split(path)[1])[0]]  # for .tsd files, there's only one class, so we'll use the file name
+        with open(path,'rb') as infile:
+            allData = infile.read().strip()
+            allData = allData[1:-1].replace(')','') # lose the outer parentheses, closing inner parentheses
+            self.rows = allData.split(',(')  # we can split each row by the remaining parenthesis
+            self.genes = self.rows[0][1:].replace('"','') # There's one remaining open parenthesis that didn't have a comma before it... but it's in the header, from which we also want to remove the quotes
+            self.genes = self.genes.strip().split(',')
+            self.genes[0] = 'time'
+            self.rows = self.rows[1:]
+            for i,r in enumerate(self.rows):
+                self.rows[i] = r.split(',')
+                for j,c in enumerate(self.rows[i]):
+                    self.rows[i][j] = float(c.strip())
+                    if j == 0:
+                        if self.minTime == None:
+                            self.minTime = self.rows[i][j]
+                            self.maxTime = self.rows[i][j]
+                        else:
+                            self.minTime = min(self.minTime,self.rows[i][j])
+                            self.maxTime = max(self.maxTime,self.rows[i][j])
+        infile.close()
+    
+    def getVectors(self, attr1, attr2):
+        if not attr1 in self.genes or not attr2 in self.genes:
+            return {}
+        
+        diffs = []
+        
+        c1 = self.genes.index(attr1)
+        c2 = self.genes.index(attr2)
+        
+        lastX = None
+        lastY = None
+        lastT = None
+        for r in self.rows:
+            x = r[c1]
+            y = r[c2]
+            t = r[0]
+            if lastX != None and lastY != None and lastT != None:
+                diffs.append((lastX,lastY,lastT,x,y,t))
+            lastX = x
+            lastY = y
+            lastT = t
+        return {self.classes[0]:diffs}
+    
+    def geneList(self):
+        return self.genes[1:]   # don't include time
+    
+    def classList(self):
+        return self.classes
+    
+    def timeRange(self):
+        return (self.minTime,self.maxTime)
+
+class CsvFile:
+    def __init__(self, path):
+        pass
+    
+    def getVectors(self, attr1, attr2):
+        pass
+    
+    def geneList(self):
+        pass
+    
+    def classList(self):
+        pass
+    
+    def timeRange(self):
+        return (self.minTime,self.maxTime)
+
+class DatFile:
+    def __init__(self, path):
+        pass
+    
+    def getVectors(self, attr1, attr2):
+        pass
+    
+    def geneList(self):
+        pass
+    
+    def classList(self):
+        pass
+    
+    def timeRange(self):
+        return (self.minTime,self.maxTime)

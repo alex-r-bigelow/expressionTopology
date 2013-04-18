@@ -1,34 +1,34 @@
 #!/usr/bin/env python
-import sys, math, os
-from PySide.QtGui import QApplication, QGraphicsScene, QGraphicsItem, QPen, QFont, QBrush, QCompleter, QTableWidgetItem, QColor, QColorDialog, QFileDialog
+import sys, os, math
+from PySide.QtGui import QApplication, QGraphicsScene, QGraphicsItem, QPen, QFont, QBrush, QCompleter, QTableWidgetItem, QColorDialog, QFileDialog
 from PySide.QtCore import Qt, QFile, QRectF, QTimer
 from PySide.QtUiTools import QUiLoader
-from soft import SoftFile
+from expressionFiles import SoftFile, TsdFile
 
 class parametricPulseGraph(QGraphicsItem):
     COLOR_MAP = {}
-    THICKNESS = 6
     
-    MOUSED_CATEGORY = None
-    MOUSED_PEN = QPen(Qt.white,THICKNESS)
+    SPEED_LIMIT = 0.25  # we can only step through a quarter of the data at a time
+    SLICE_PROPORTION = 0.1
     
-    SLICE_DELTA = 0.05
-    SLICE_START = 0.0
-    SLICE_END = 0.3
-    UNSLICED_OPACITY = 0.5
+    UNSLICED_THICKNESS = 3
+    UNSLICED_OPACITY = 0.25
+    SLICED_THICKNESS = 6
     SLICED_OPACITY = 0.75
     
-    FULL_SIZE = 300
+    FULL_SIZE = 400
     SMALL_SIZE = 100
     
     LABEL_THRESHOLD = 150
     
-    LABEL_FONT = QFont('Helvetica',18)
+    LABEL_FONT = QFont('Gill Sans',18)
+    LABEL_FONT.setStyleHint(QFont.StyleHint.SansSerif)
     LABEL_PEN = QPen(Qt.black)
     LABEL_OPACITY = 0.75
     LABEL_PADDING = 10
     
-    TEXT_FONT = QFont('Helvetica', 14)
+    TEXT_FONT = QFont('Gill Sans', 14)
+    TEXT_FONT.setStyleHint(QFont.StyleHint.SansSerif)
     TEXT_PEN = QPen(Qt.white)
     TEXT_OPACITY = 0.75
     
@@ -60,7 +60,7 @@ class parametricPulseGraph(QGraphicsItem):
             return
         
         for vlist in self.vectors.itervalues():
-            for x0,y0,x1,y1 in vlist:
+            for x0,y0,t0,x1,y1,t1 in vlist:
                 if self.xmin == None:
                     self.xmin = min(x0,x1)
                     self.xmax = max(x0,x1)
@@ -109,30 +109,54 @@ class parametricPulseGraph(QGraphicsItem):
         painter.setOpacity(parametricPulseGraph.BACKGROUND_OPACITY)
         painter.drawRect(normalRect)
         painter.fillRect(normalRect,parametricPulseGraph.BACKGROUND)
-        if self.vectors != None:
+        if self.vectors != None and (self.xmax != self.xmin or self.ymax != self.ymin):
             # Draw vectors
             for cat,color in parametricPulseGraph.COLOR_MAP.iteritems():
                 if not self.vectors.has_key(cat):
                     continue
-                if cat == parametricPulseGraph.MOUSED_CATEGORY:
-                    painter.setPen(parametricPulseGraph.MOUSED_PEN)
+                if self.xmax == self.xmin:
+                    xScale = None
                 else:
-                    painter.setPen(QPen(color,parametricPulseGraph.THICKNESS))
-                xScale = self.width / (self.xmax-self.xmin)
-                yScale = self.height / (self.ymax-self.ymin)
-                for x0,y0,x1,y1 in self.vectors[cat]:
-                    x0 = (x0-self.xmin)*xScale
-                    y0 = (y0-self.ymin)*yScale
-                    x1 = (x1-self.xmin)*xScale
-                    y1 = (y1-self.ymin)*yScale
+                    xScale = self.width / (self.xmax-self.xmin)
+                if self.ymax == self.ymin:
+                    yScale = None
+                else:
+                    yScale = self.height / (self.ymax-self.ymin)
+                for x0,y0,t0,x1,y1,t1 in self.vectors[cat]:
+                    if xScale == None:
+                        x0 = self.width/2
+                        x1 = self.width/2
+                    else:
+                        x0 = (x0-self.xmin)*xScale
+                        x1 = (x1-self.xmin)*xScale
+                    if yScale == None:
+                        y0 = self.height/2
+                        y1 = self.height/2
+                    else:
+                        y0 = (y0-self.ymin)*yScale
+                        y1 = (y1-self.ymin)*yScale
+                    
                     painter.setOpacity(parametricPulseGraph.UNSLICED_OPACITY)
+                    painter.setPen(QPen(color,parametricPulseGraph.UNSLICED_THICKNESS))
                     painter.drawLine(x0,y0,x1,y1)
-                    xstart = (x1-x0)*parametricPulseGraph.SLICE_START
-                    xend = (x1-x0)*parametricPulseGraph.SLICE_END
-                    ystart = (y1-y0)*parametricPulseGraph.SLICE_START
-                    yend = (y1-y0)*parametricPulseGraph.SLICE_END
-                    painter.setOpacity(parametricPulseGraph.SLICED_OPACITY)
-                    painter.drawLine(x0+xstart,y0+ystart,x0+xend,y0+yend)
+                    
+                    if t0 == None or t1 == None:
+                        return
+                    
+                    startTime = max(parametricPulseGraph.CURRENT_TIME-parametricPulseGraph.SLICE_DURATION,t0)
+                    endTime = min(parametricPulseGraph.CURRENT_TIME+parametricPulseGraph.SLICE_DURATION,t1)
+                    
+                    if not endTime <= startTime:
+                        startTime = (startTime-t0)/(t1-t0)
+                        endTime = (endTime-t0)/(t1-t0)
+                        
+                        xstart = (x1-x0)*startTime
+                        xend = (x1-x0)*endTime
+                        ystart = (y1-y0)*startTime
+                        yend = (y1-y0)*endTime
+                        painter.setOpacity(parametricPulseGraph.SLICED_OPACITY)
+                        painter.setPen(QPen(color,parametricPulseGraph.SLICED_THICKNESS))
+                        painter.drawLine(x0+xstart,y0+ystart,x0+xend,y0+yend)
                 
             # Draw labels
             if min(self.width,self.height) >= parametricPulseGraph.LABEL_THRESHOLD:
@@ -148,14 +172,10 @@ class parametricPulseGraph(QGraphicsItem):
             painter.setFont(parametricPulseGraph.TEXT_FONT)
             painter.setPen(parametricPulseGraph.TEXT_PEN)
             painter.setOpacity(parametricPulseGraph.TEXT_OPACITY)
-            painter.drawText(normalRect,Qt.AlignHCenter | Qt.AlignVCenter, "No Data")
-    
-    @staticmethod
-    def updateValues():
-        parametricPulseGraph.SLICE_START += parametricPulseGraph.SLICE_DELTA
-        if parametricPulseGraph.SLICE_START >= 1.0:
-            parametricPulseGraph.SLICE_START = -parametricPulseGraph.SLICE_DELTA
-        parametricPulseGraph.SLICE_END = parametricPulseGraph.SLICE_START+parametricPulseGraph.SLICE_DELTA
+            if self.vectors == None:
+                painter.drawText(normalRect,Qt.AlignHCenter | Qt.AlignVCenter, "No Data")
+            else:
+                painter.drawText(normalRect,Qt.AlignHCenter | Qt.AlignVCenter, "No Variation")
     
     def boundingRect(self):
         pensize = parametricPulseGraph.BORDER_WIDTH/2
@@ -163,9 +183,24 @@ class parametricPulseGraph(QGraphicsItem):
         
     def mousePressEvent(self, event):
         self.parent.setTarget(self.xAttribute,self.yAttribute)
+    
+    @staticmethod
+    def nextFrame():
+        parametricPulseGraph.CURRENT_TIME += parametricPulseGraph.CURRENT_SPEED
+        if parametricPulseGraph.CURRENT_TIME - parametricPulseGraph.SLICE_DURATION > parametricPulseGraph.TIME_END:
+            parametricPulseGraph.CURRENT_TIME = parametricPulseGraph.TIME_START - parametricPulseGraph.SLICE_DURATION
+    @staticmethod
+    def updateTimes(start,end):
+        # These values will change
+        parametricPulseGraph.TIME_START = int(start)
+        parametricPulseGraph.TIME_END = math.ceil(end)
+        parametricPulseGraph.CURRENT_TIME = int(parametricPulseGraph.TIME_START + (parametricPulseGraph.TIME_END-parametricPulseGraph.TIME_START)*0.5)
+        parametricPulseGraph.SLICE_DURATION = math.ceil((parametricPulseGraph.TIME_END-parametricPulseGraph.TIME_START)*parametricPulseGraph.SLICE_PROPORTION)  # really number of seconds before and after
+        parametricPulseGraph.MIN_SPEED = 0
+        parametricPulseGraph.MAX_SPEED = math.ceil((parametricPulseGraph.TIME_END-parametricPulseGraph.TIME_START)*parametricPulseGraph.SPEED_LIMIT)
+        parametricPulseGraph.CURRENT_SPEED = math.ceil(parametricPulseGraph.MAX_SPEED*0.25)  # everything is moved forward this many seconds every frame (THAT speed is defined by Viz.FRAME_DURATION)
 
 class multiViewPanel:
-    FRAME_DURATION = 1000/60 # 60 FPS
     def __init__(self, view, controller):
         self.view = view
         self.controller = controller
@@ -176,11 +211,6 @@ class multiViewPanel:
         self.variableOrder = []
         self.currentX = None
         self.currentY = None
-        
-        # Update timer
-        self.timer = QTimer(self.view)
-        self.timer.timeout.connect(self.updateValues)
-        self.timer.start(multiViewPanel.FRAME_DURATION)
     
     def addVariable(self, var):
         if not var in self.variables.iterkeys():
@@ -258,10 +288,8 @@ class multiViewPanel:
                 xPos += padding
         self.scene.update()
     
-    def updateValues(self):
-        parametricPulseGraph.updateValues()
-        self.scene.update()
 class Viz:
+    FRAME_DURATION = 1000/30 # 30 FPS
     DEFAULT_COLOR = Qt.lightGray
     def __init__(self):
         self.loadedPaths = set()
@@ -274,6 +302,8 @@ class Viz:
         self.window = self.loader.load(infile, None)
         infile.close()
         
+        self.updateTimeSliders()
+        
         # Main view
         self.multiPanel = multiViewPanel(self.window.graphicsView,self)
         
@@ -283,17 +313,27 @@ class Viz:
         self.window.quitButton.clicked.connect(self.window.close)
         self.window.addButton.clicked.connect(self.addGene)
         self.window.geneBox.editTextChanged.connect(self.editGene)
+        self.window.speedSlider.valueChanged.connect(self.changeSpeed)
+        self.window.timeSlider.valueChanged.connect(self.changeTime)
         
         self.window.addButton.setEnabled(False)
         
         self.window.showFullScreen()
         #self.window.show()
+        
+        # Start timer
+        
+        # Update timer
+        self.timer = QTimer(self.window)
+        self.timer.timeout.connect(self.nextFrame)
+        self.timer.start(Viz.FRAME_DURATION)
     
     def changeColor(self, row, column):
         if column == 1:
             col = QColorDialog.getColor()
             parametricPulseGraph.COLOR_MAP[self.window.categoryTable.item(row,0).text()] = col
             self.window.categoryTable.item(row,1).setBackground(col)
+            self.multiPanel.scene.update()
     
     def addGene(self):
         g = self.window.geneBox.currentText()
@@ -323,8 +363,33 @@ class Viz:
             vectors.update(s.getVectors(x,y))
         return vectors
     
+    def nextFrame(self):
+        if parametricPulseGraph.CURRENT_SPEED > 0:
+            parametricPulseGraph.nextFrame()
+            self.window.timeSlider.setSliderPosition(parametricPulseGraph.CURRENT_TIME)
+            self.multiPanel.scene.update()
+    
+    def updateTimeSliders(self):
+        self.window.timeSlider.setMinimum(parametricPulseGraph.TIME_START)
+        self.window.timeSlider.setMaximum(parametricPulseGraph.TIME_END)
+        self.window.timeSlider.setSliderPosition(parametricPulseGraph.CURRENT_TIME)
+        self.window.timeSlider.setSingleStep(1)
+        self.window.timeSlider.setPageStep(parametricPulseGraph.CURRENT_SPEED)
+        self.window.speedSlider.setMinimum(parametricPulseGraph.MIN_SPEED)
+        self.window.speedSlider.setMaximum(parametricPulseGraph.MAX_SPEED)
+        self.window.speedSlider.setSliderPosition(parametricPulseGraph.CURRENT_SPEED)
+        self.window.speedSlider.setSingleStep(1)
+        self.window.speedSlider.setPageStep(int(0.1*parametricPulseGraph.MAX_SPEED))
+    
+    def changeSpeed(self):
+        parametricPulseGraph.CURRENT_SPEED = self.window.speedSlider.value()
+    
+    def changeTime(self):
+        parametricPulseGraph.CURRENT_TIME = self.window.timeSlider.value()
+        self.multiPanel.scene.update()
+    
     def loadData(self):
-        fileNames = QFileDialog.getOpenFileNames(caption=u"Open expression data file", filter=u"SOFT (*.soft)")[0]  #;;Time Series Data (*.tsd);;Comma separated value (*.csv);;Column separated data (*.dat)
+        fileNames = QFileDialog.getOpenFileNames(caption=u"Open expression data file", filter=u"SOFT (*.soft);;Time Series Data (*.tsd)")[0]  #;;Comma separated value (*.csv);;Column separated data (*.dat)
         if len(fileNames) == 0:
             return
         
@@ -332,14 +397,25 @@ class Viz:
             if f in self.loadedPaths:
                 continue
             ext = os.path.splitext(f)[1].lower()
+            fObj = None
             if ext == '.soft':
-                self.dataSources.append(SoftFile(f))
-            '''elif ext == '.tsd':
-                self.dataSources.append(TsdFile(f))
-            elif ext == '.csv':
-                self.dataSources.append(CsvFile(f))
-            elif ext == '.dat':
-                self.dataSources.append(DatFile(f))'''
+                fObj = SoftFile(f)
+            elif ext == '.tsd':
+                fObj = TsdFile(f)
+            #elif ext == '.csv':
+            #    self.dataSources.append(CsvFile(f))
+            #elif ext == '.dat':
+            #    self.dataSources.append(DatFile(f))
+            else:
+                continue
+            self.dataSources.append(fObj)
+            if len(self.loadedPaths) == 0:
+                low,high = fObj.timeRange()
+                parametricPulseGraph.updateTimes(low,high)
+            else:
+                low,high = fObj.timeRange()
+                parametricPulseGraph.updateTimes(min(low,parametricPulseGraph.TIME_START),max(high,parametricPulseGraph.TIME_END))
+            self.updateTimeSliders()
             self.loadedPaths.add(f)
         
         # Update gene box
@@ -372,6 +448,7 @@ class Viz:
             self.window.categoryTable.setItem(r,1,cItem)
 
 if __name__ == '__main__':
+    parametricPulseGraph.updateTimes(0,100)
     app = QApplication(sys.argv)
     window = Viz()
     sys.exit(app.exec_())

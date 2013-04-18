@@ -16,7 +16,14 @@
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
     <item row="0" column="0">
-     <widget class="QGraphicsView" name="graphicsView"/>
+     <widget class="QGraphicsView" name="graphicsView">
+      <property name="font">
+       <font>
+        <family>Gill Sans</family>
+        <pointsize>14</pointsize>
+       </font>
+      </property>
+     </widget>
     </item>
     <item row="0" column="1">
      <widget class="QTableWidget" name="categoryTable">
@@ -31,6 +38,15 @@
         <width>200</width>
         <height>16777215</height>
        </size>
+      </property>
+      <property name="font">
+       <font>
+        <family>Gill Sans</family>
+        <pointsize>14</pointsize>
+        <weight>75</weight>
+        <bold>true</bold>
+        <stylestrategy>PreferAntialias</stylestrategy>
+       </font>
       </property>
       <property name="editTriggers">
        <set>QAbstractItemView::NoEditTriggers</set>
@@ -68,7 +84,26 @@
     <item row="1" column="0" colspan="2">
      <layout class="QHBoxLayout" name="horizontalLayout">
       <item>
+       <widget class="QPushButton" name="loadButton">
+        <property name="font">
+         <font>
+          <family>Gill Sans</family>
+          <pointsize>14</pointsize>
+         </font>
+        </property>
+        <property name="text">
+         <string>Load Data...</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QComboBox" name="geneBox">
+        <property name="font">
+         <font>
+          <family>Gill Sans</family>
+          <pointsize>14</pointsize>
+         </font>
+        </property>
         <property name="editable">
          <bool>true</bool>
         </property>
@@ -82,19 +117,31 @@
       </item>
       <item>
        <widget class="QPushButton" name="addButton">
+        <property name="font">
+         <font>
+          <family>Gill Sans</family>
+          <pointsize>14</pointsize>
+         </font>
+        </property>
         <property name="text">
          <string>Add</string>
         </property>
         <property name="autoDefault">
-         <bool>true</bool>
+         <bool>false</bool>
         </property>
         <property name="default">
-         <bool>true</bool>
+         <bool>false</bool>
         </property>
        </widget>
       </item>
       <item>
        <spacer name="horizontalSpacer">
+        <property name="font">
+         <font>
+          <family>Gill Sans</family>
+          <pointsize>14</pointsize>
+         </font>
+        </property>
         <property name="orientation">
          <enum>Qt::Horizontal</enum>
         </property>
@@ -107,14 +154,96 @@
        </spacer>
       </item>
       <item>
-       <widget class="QPushButton" name="loadButton">
+       <widget class="QLabel" name="label">
+        <property name="font">
+         <font>
+          <family>Gill Sans</family>
+          <pointsize>14</pointsize>
+         </font>
+        </property>
         <property name="text">
-         <string>Load Data...</string>
+         <string>Time (s)</string>
         </property>
        </widget>
       </item>
       <item>
+       <widget class="QSlider" name="timeSlider">
+        <property name="font">
+         <font>
+          <family>Gill Sans</family>
+          <pointsize>14</pointsize>
+         </font>
+        </property>
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="invertedAppearance">
+         <bool>false</bool>
+        </property>
+        <property name="invertedControls">
+         <bool>false</bool>
+        </property>
+        <property name="tickPosition">
+         <enum>QSlider::TicksBelow</enum>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="label_2">
+        <property name="font">
+         <font>
+          <family>Gill Sans</family>
+          <pointsize>14</pointsize>
+         </font>
+        </property>
+        <property name="text">
+         <string>Speed (s/frame)</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QSlider" name="speedSlider">
+        <property name="font">
+         <font>
+          <family>Gill Sans</family>
+          <pointsize>14</pointsize>
+         </font>
+        </property>
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="tickPosition">
+         <enum>QSlider::TicksBelow</enum>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="horizontalSpacer_2">
+        <property name="font">
+         <font>
+          <family>Gill Sans</family>
+          <pointsize>14</pointsize>
+         </font>
+        </property>
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
        <widget class="QPushButton" name="quitButton">
+        <property name="font">
+         <font>
+          <family>Gill Sans</family>
+          <pointsize>14</pointsize>
+         </font>
+        </property>
         <property name="text">
          <string>Quit</string>
         </property>
