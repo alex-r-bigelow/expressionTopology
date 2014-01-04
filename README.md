@@ -1,7 +1,7 @@
 expressionTopology
 ==================
 
-Wildly experimental project toying with the idea of visualizing gene expression data parametrically in an n-dimensional space. Data in .SOFT format, that can be downloaded from the [NCBI Geo Database](http://www.ncbi.nlm.nih.gov/geo/), can be visualized, as well as simulation outputs from [iBioSim](http://www.async.ece.utah.edu/iBioSim/) in .tsd format. For example, try [this](ftp://ftp.ncbi.nlm.nih.gov/geo/datasets/GDS1nnn/GDS1963/soft/GDS1963_full.soft.gz) file.
+A class project playing with the idea of visualizing gene expression data parametrically in an n-dimensional space. Data in .SOFT format, that can be downloaded from the [NCBI Geo Database](http://www.ncbi.nlm.nih.gov/geo/), can be visualized, as well as simulation outputs from [iBioSim](http://www.async.ece.utah.edu/iBioSim/) in .tsd format. For example, try [this](ftp://ftp.ncbi.nlm.nih.gov/geo/datasets/GDS1nnn/GDS1963/soft/GDS1963_full.soft.gz) file.
 
 This tool is designed to compare real and simulated expression levels over time for any two pairs of genes. The visualization is an animated, parametric view, showing fluctuations in expression levels for any two genes at a time. Use the colors on the right to group classes of experiments or simulation runs. Use the sliders at the bottom to adjust animation or specific time intervals. Clicking on a specific plot will show more detail.
 
