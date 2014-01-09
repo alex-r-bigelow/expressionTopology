@@ -13,11 +13,11 @@ Running
 -------
 If possible, you should use these precompiled binaries:
 
-[Mac OS X v1.0](http://sci.utah.edu/~abigelow/Downloads/expressionTopology/Mac/expressionTopology_1.0.dmg)
+[Mac OS X v1.0](http://cs.utah.edu/~abigelow/Downloads/expressionTopology/Mac/expressionTopology_1.0.dmg)
 
-[Linux v1.0](http://sci.utah.edu/~abigelow/Downloads/expressionTopology/Linux/expressionTopology_1.0.tar.gz)
+[Linux v1.0](http://cs.utah.edu/~abigelow/Downloads/expressionTopology/Linux/expressionTopology_1.0.tar.gz)
 
-[Windows v1.0](http://sci.utah.edu/~abigelow/Downloads/expressionTopology/Windows/expressionTopology_1.0.zip)
+[Windows v1.0](http://cs.utah.edu/~abigelow/Downloads/expressionTopology/Windows/expressionTopology_1.0.zip)
 
 If you wish to run from the source code, you will need to install Qt, Python 2.7, PySide, and clone this repository. The program can then be launched via:
 
